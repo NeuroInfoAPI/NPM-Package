@@ -164,7 +164,7 @@ By default, the WebSocket client uses ticket-based authentication (`GET /api/ws/
 
 ## Documentation
 
-- API docs: `https://github.com/Appstun/NeuroInfoAPI-Docs`
+- API docs: https://neuro.appstun.net/api/docs
 
 ## License
 
