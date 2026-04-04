@@ -1,7 +1,7 @@
 {
   "packageManager": "pnpm@10.31.0",
   "name": "neuroinfoapi-client",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "A client for interacting with the NeuroInfoAPI",
   "type": "module",
   "main": "./dist/index.js",
@@ -33,11 +33,11 @@
   "author": "Appstun",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Appstun/NeuroInfoAPI-Client-Package/issues"
+    "url": "https://github.com/NeuroInfoAPI/NPM-Package/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Appstun/NeuroInfoAPI-Client-Package.git"
+    "url": "https://github.com/NeuroInfoAPI/NPM-Package.git"
   },
   "homepage": "https://neuro.appstun.net/api/docs",
   "dependencies": {
