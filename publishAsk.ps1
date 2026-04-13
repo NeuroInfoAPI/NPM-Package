@@ -1,5 +1,10 @@
 # publishAsk.ps1
 
+# Prevent recursive invocation when npm publish triggers the package "publish" lifecycle script.
+if ($env:NIAC_PUBLISH_WRAPPER_ACTIVE -eq "1") {
+    exit 0
+}
+
 $plainToken = Read-Host -Prompt "NPM Auth Token (leer lassen fuer bestehendes npm adduser Login)"
 $tempNpmrc = $null
 
@@ -19,6 +24,7 @@ try {
 
     Write-Host "Publishing..." -ForegroundColor Cyan
 
+    $env:NIAC_PUBLISH_WRAPPER_ACTIVE = "1"
     npm publish 2>&1 | Tee-Object -Variable publishOutput | Out-Null
 
     if ($LASTEXITCODE -eq 0) {
@@ -35,6 +41,7 @@ try {
 } finally {
     Remove-Item Env:NPM_TOKEN -ErrorAction SilentlyContinue
     Remove-Item Env:NPM_CONFIG_USERCONFIG -ErrorAction SilentlyContinue
+    Remove-Item Env:NIAC_PUBLISH_WRAPPER_ACTIVE -ErrorAction SilentlyContinue
 
     if (Test-Path $tempNpmrc) {
         Remove-Item $tempNpmrc -Force -ErrorAction SilentlyContinue
