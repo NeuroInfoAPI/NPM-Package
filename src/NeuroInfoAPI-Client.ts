@@ -82,16 +82,10 @@ export class NeuroInfoApiClient {
   public getAllVods = () => this.request<TwitchVod[]>("/twitch/vods");
 
   /**
-   * Fetches a specific VOD by stream ID. If no stream ID is provided, fetches the latest VOD.
+   * Fetches a specific VOD by stream ID.
    * @docs https://github.com/Appstun/NeuroInfoAPI-Docs/blob/master/twitch.md#specific-vod-1
    */
-  public getVod = (streamId?: string) => this.request<TwitchVod>("/twitch/vod", streamId ? { streamId } : undefined);
-
-  /**
-   * Fetches the latest VOD (Video on Demand).
-   * @docs https://github.com/Appstun/NeuroInfoAPI-Docs/blob/master/twitch.md#specific-vod-1
-   */
-  public getLatestVod = () => this.getVod();
+  public getVod = (streamId: string) => this.request<TwitchVod>("/twitch/vod", { streamId });
 
   /**
    * Fetches the schedule for a specific year and week. If no parameters are provided, fetches the current week's schedule.
@@ -105,6 +99,12 @@ export class NeuroInfoApiClient {
    * @docs https://github.com/Appstun/NeuroInfoAPI-Docs/blob/master/schedule.md#latest-weekly-schedule-1
    */
   public getLatestSchedule = () => this.request<ScheduleLatestResponse>("/schedule/latest");
+
+  /**
+   * Fetches available schedule week numbers grouped by year.
+   * @docs https://github.com/Appstun/NeuroInfoAPI-Docs/blob/master/schedule.md#schedule-weeks-index-1
+   */
+  public getScheduleWeeks = () => this.request<ScheduleWeeksResponse>("/schedule/weeks");
 
   /**
    * Searches schedule entries by message text with optional filters and cursor pagination.
@@ -143,7 +143,14 @@ export class NeuroInfoApiClient {
    * Fetches the years for which subathon data is available.
    * @docs https://github.com/Appstun/NeuroInfoAPI-Docs/blob/master/subathon.md#subathon-years-1
    */
-  public getSubathonYears = () => this.request<number[]>("/subathon/years");
+  public getSubathonYears(detailed: true): Promise<ApiResult<SubathonYearsDetailedResponse>>;
+  public getSubathonYears(detailed?: false): Promise<ApiResult<SubathonYearsResponse>>;
+  public getSubathonYears(detailed: boolean = false): Promise<ApiResult<SubathonYearsResponse | SubathonYearsDetailedResponse>> {
+    return this.request<SubathonYearsResponse | SubathonYearsDetailedResponse>(
+      "/subathon/years",
+      detailed ? { detailed: true } : undefined,
+    );
+  }
 }
 
 /**
@@ -1104,6 +1111,8 @@ export interface ScheduleLatestResponse extends ScheduleResponse {
   hasActiveSubathon: boolean;
 }
 
+export type ScheduleWeeksResponse = Record<number, number[]>;
+
 export interface ScheduleSearchCursor {
   year: number;
   week: number;
@@ -1149,6 +1158,9 @@ export interface SubathonData {
   startTimestamp?: number; // Unix timestamp
   endTimestamp?: number; // Unix timestamp
 }
+
+export type SubathonYearsResponse = string[];
+export type SubathonYearsDetailedResponse = Record<number, string>;
 
 export interface SubathonGoal {
   name: string;
