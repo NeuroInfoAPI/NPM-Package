@@ -7,6 +7,8 @@ A comprehensive TypeScript client that provides full access to NeuroInfoAPI endp
 ## Features
 
 - Authentication support via Bearer token handling
+- Optional token directly in `NeuroInfoApiClient` constructor
+- Configurable API base URL via client options
 - Full TypeScript support with typed API responses
 - Timeout protection (10s default)
 - Type-safe error handling via `{ data, error }` result pattern
@@ -24,10 +26,8 @@ npm install neuroinfoapi-client
 ```ts
 import { NeuroInfoApiClient } from "neuroinfoapi-client";
 
-const client = new NeuroInfoApiClient();
-
-// For endpoints requiring authentication
-client.setApiToken("your-api-token-here");
+// Optional token can be passed directly in the constructor
+const client = new NeuroInfoApiClient("your-api-token-here");
 
 const { data, error } = await client.getCurrentStream();
 
@@ -36,6 +36,32 @@ if (error) {
 } else {
   console.log(data);
 }
+```
+
+## Client Configuration
+
+Constructor signature:
+
+```ts
+new NeuroInfoApiClient(token?: string, options?: { baseUrl?: string })
+```
+
+Examples:
+
+```ts
+import { NeuroInfoApiClient } from "neuroinfoapi-client";
+
+// 1) No token in constructor (set later)
+const clientA = new NeuroInfoApiClient();
+clientA.setApiToken("your-api-token-here");
+
+// 2) Token in constructor
+const clientB = new NeuroInfoApiClient("your-api-token-here");
+
+// 3) Custom API URL (self-hosted or staging)
+const clientC = new NeuroInfoApiClient("your-api-token-here", {
+  baseUrl: "https://your-domain.example/api/v1",
+});
 ```
 
 ## Browser Usage
