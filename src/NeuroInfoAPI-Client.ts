@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, isAxiosError } from "axios";
+import { FetchError, ofetch } from "ofetch";
 
 type Success<T> = { data: T; error: null };
 type Failure = { data: null; error: NeuroApiError };
@@ -28,7 +28,9 @@ export class NeuroApiError extends Error {
  * Provides methods to fetch stream data, VODs, schedules, and subathon information.
  */
 export class NeuroInfoApiClient {
-  public apiInstance: AxiosInstance;
+  public apiInstance: ReturnType<typeof ofetch.create>;
+  private apiToken: string | null = null;
+  private baseUrl: string;
 
   /**
    * Creates a new API client instance.
@@ -36,8 +38,9 @@ export class NeuroInfoApiClient {
    * @param options - Optional configuration options
    */
   constructor(token: string | undefined = undefined, options: NeuroInfoApiClientOptions = {}) {
-    this.apiInstance = axios.create({
-      baseURL: options.baseUrl ?? `https://${baseDomain}/api/v1`,
+    this.baseUrl = options.baseUrl ?? `https://${baseDomain}/api/v1`;
+    this.apiInstance = ofetch.create({
+      baseURL: this.baseUrl,
       timeout: 10000,
       headers: {
         "Content-Type": "application/json",
@@ -51,8 +54,8 @@ export class NeuroInfoApiClient {
    * Parses an error into a NeuroApiError with proper code and message.
    */
   private parseError(error: unknown): NeuroApiError {
-    if (isAxiosError(error)) {
-      const apiError = error.response?.data?.error;
+    if (error instanceof FetchError) {
+      const apiError = (error.data as { error?: { code?: string; message?: string } } | undefined)?.error;
       if (apiError?.code && apiError?.message) return new NeuroApiError(apiError.code, apiError.message, error.response?.status);
       if (!error.response) return new NeuroApiError("NETWORK", error.message || "Network error");
       return new NeuroApiError("HTTP_ERROR", `Request failed with status ${error.response.status}`, error.response.status);
@@ -62,15 +65,17 @@ export class NeuroInfoApiClient {
 
   /** Sets the API token for authentication. Pass `null` to remove the token. */
   public setApiToken(token: string | null): void {
-    if (token == null) delete this.apiInstance.defaults.headers.common["Authorization"];
-    else this.apiInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    this.apiToken = token;
   }
 
   /** Generic request wrapper that handles errors consistently. */
   private async request<T>(url: string, params?: Record<string, any>): Promise<ApiResult<T>> {
     try {
-      const response = await this.apiInstance.get(url, params ? { params } : undefined);
-      return { data: response.data, error: null };
+      const response = await this.apiInstance<T>(url, {
+        query: params,
+        headers: this.apiToken != null ? { Authorization: `Bearer ${this.apiToken}` } : undefined,
+      });
+      return { data: response, error: null };
     } catch (error) {
       return { data: null, error: this.parseError(error) };
     }
