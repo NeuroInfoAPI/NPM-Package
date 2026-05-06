@@ -5,7 +5,7 @@ if ($env:NIAC_PUBLISH_WRAPPER_ACTIVE -eq "1") {
     exit 0
 }
 
-$plainToken = Read-Host -Prompt "NPM Auth Token (leer lassen fuer bestehendes npm adduser Login)"
+$plainToken = Read-Host -Prompt "NPM Auth Token (keep empty to use existing npm auth config)"
 $tempNpmrc = $null
 
 try {
@@ -22,7 +22,7 @@ try {
         $env:NPM_CONFIG_USERCONFIG = $tempNpmrc
     }
 
-    Write-Host "Publishing..." -ForegroundColor Cyan
+    Write-Host "Building & Publishing..." -ForegroundColor Cyan
 
     $env:NIAC_PUBLISH_WRAPPER_ACTIVE = "1"
     npm publish 2>&1 | Tee-Object -Variable publishOutput | Out-Null
@@ -32,9 +32,9 @@ try {
     } else {
         if ($publishOutput -match "Two-factor authentication|bypass 2fa") {
             Write-Host "Publish blocked by npm security policy." -ForegroundColor Yellow
-            Write-Host "Nutze einen granular token mit aktivem 'bypass 2fa' fuer Publishing." -ForegroundColor Yellow
+            Write-Host "Use a granular token with active 'bypass 2fa' for publishing." -ForegroundColor Yellow
         } elseif ($publishOutput -match "ENEEDAUTH|need auth") {
-            Write-Host "Keine gueltige npm Auth gefunden. Entweder Token eingeben oder vorher 'npm adduser' im selben User-Profil ausfuehren." -ForegroundColor Yellow
+            Write-Host "No valid npm auth found. Either enter a token or run 'npm adduser' in the same user profile." -ForegroundColor Yellow
         }
         Write-Host "Publish failed (exit code $LASTEXITCODE)" -ForegroundColor Red
     }

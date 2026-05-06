@@ -20,8 +20,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "powershell -NoProfile -Command \"if (Test-Path dist) { Remove-Item dist -Recurse -Force }\"",
-    "prepublishOnly": "pnpm clean && pnpm build",
-    "publish": "powershell -ExecutionPolicy Bypass -File .\\publishAsk.ps1"
+    "publishPackage": "powershell -ExecutionPolicy Bypass -File .\\publishAsk.ps1"
   },
   "keywords": [
     "neuroinfoapi",
