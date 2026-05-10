@@ -188,6 +188,8 @@ Available WebSocket events:
 
 By default, the WebSocket client uses ticket-based authentication (`GET /api/ws/ticket`) before connecting, avoiding API tokens in URL query parameters.
 
+**Heartbeat:** While connected, the client periodically sends a JSON `ping` and expects a `pong` from the server (default interval **30s**, pong timeout **10s**). If the pong is missing, the socket is closed and automatic reconnect runs—this detects stale or half-open connections. Disable or tune via constructor options: `autoHeartbeat`, `heartbeatIntervalMs` (minimum 5000), `heartbeatTimeoutMs` (minimum 1000). Keep the ping interval below the server WebSocket idle timeout if you self-host with aggressive idle limits.
+
 ## Documentation
 
 - API docs: https://neuro.appstun.net/api/docs
