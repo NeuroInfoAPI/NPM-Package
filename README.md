@@ -1,3 +1,7 @@
+> [!NOTE]
+> **The axios version does not get any updates anymore.** See [master branch](https://github.com/NeuroInfoAPI/NPM-Package/tree/master) for current version. <br>
+> *Also somehow the heartbeat for the WebSocket client got removed in the latest commit. Use [this commit](https://github.com/NeuroInfoAPI/NPM-Package/commit/979bc32e9ae68625d986f4645f269402ef758f46) instead.*
+
 # neuroinfoapi-client
 
 TypeScript/JavaScript client for the NeuroInfoAPI.
