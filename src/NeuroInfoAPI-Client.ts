@@ -1315,7 +1315,7 @@ export interface SubathonData {
   endTimestamp?: number; // Unix timestamp
 }
 
-export type SubathonYearsResponse = string[];
+export type SubathonYearsResponse = number[];
 export type SubathonYearsDetailedResponse = Record<number, string>;
 
 export interface SubathonGoal {
