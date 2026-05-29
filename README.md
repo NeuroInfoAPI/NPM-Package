@@ -183,6 +183,7 @@ Available WebSocket events:
 - `scheduleUpdate`
 - `subathonUpdate`
 - `subathonGoalUpdate`
+- `blogFeedUpdate`
 
 By default, the WebSocket client uses ticket-based authentication (`GET /api/ws/ticket`) before connecting, avoiding API tokens in URL query parameters.
 
