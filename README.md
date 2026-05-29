@@ -1,8 +1,6 @@
 # neuroinfoapi-client
 
-TypeScript/JavaScript client for the NeuroInfoAPI.
-
-A comprehensive TypeScript client that provides full access to NeuroInfoAPI endpoints with proper type definitions.
+A comprehensive TypeScript/JavaScript client that provides full access to NeuroInfoAPI endpoints with proper type definitions.
 
 ## Features
 
