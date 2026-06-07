@@ -32,6 +32,16 @@ async function bootCheck(baseUrlOrApiBase: string): Promise<void> {
 }
 
 /**
+ * Structured error body returned by the API.
+ */
+export interface ApiErrorBody {
+  code: string;
+  message: string;
+  timestamp: number;
+  path: string;
+}
+
+/**
  * Custom error class for API errors with code and status information.
  */
 export class NeuroApiError extends Error {
@@ -39,6 +49,8 @@ export class NeuroApiError extends Error {
     public code: string,
     message: string,
     public status?: number,
+    public timestamp?: number,
+    public path?: string,
   ) {
     super(message);
     this.name = "NeuroApiError";
@@ -60,7 +72,7 @@ export class NeuroInfoApiClient {
    * @param options - Optional configuration options
    */
   constructor(token: string | undefined = undefined, options: NeuroInfoApiClientOptions = {}) {
-    this.baseUrl = options.baseUrl ?? `https://${baseDomain}/api/v1`;
+    this.baseUrl = options.baseUrl ?? `https://${baseDomain}/api/v2`;
     this.apiInstance = ofetch.create({
       baseURL: this.baseUrl,
       timeout: 10000,
@@ -80,8 +92,16 @@ export class NeuroInfoApiClient {
    */
   private parseError(error: unknown): NeuroApiError {
     if (error instanceof FetchError) {
-      const apiError = (error.data as { error?: { code?: string; message?: string } } | undefined)?.error;
-      if (apiError?.code && apiError?.message) return new NeuroApiError(apiError.code, apiError.message, error.response?.status);
+      const apiError = (error.data as { error?: Partial<ApiErrorBody> & { code?: string; message?: string } } | undefined)?.error;
+      if (apiError?.code && apiError?.message) {
+        return new NeuroApiError(
+          apiError.code,
+          apiError.message,
+          error.response?.status,
+          typeof apiError.timestamp === "number" ? apiError.timestamp : undefined,
+          typeof apiError.path === "string" ? apiError.path : undefined,
+        );
+      }
       if (!error.response) return new NeuroApiError("NETWORK", error.message || "Network error");
       return new NeuroApiError("HTTP_ERROR", `Request failed with status ${error.response.status}`, error.response.status);
     }
@@ -96,11 +116,13 @@ export class NeuroInfoApiClient {
   /** Generic request wrapper that handles errors consistently. */
   private async request<T>(url: string, params?: Record<string, any>): Promise<ApiResult<T>> {
     try {
-      const response = await this.apiInstance<T>(url, {
+      const response = await this.apiInstance<any>(url, {
         query: params,
         headers: this.apiToken != null ? { Authorization: `Bearer ${this.apiToken}` } : undefined,
       });
-      return { data: response, error: null };
+      // Unwrap { data: T } response envelope
+      const data = response && typeof response === "object" && "data" in response ? response.data : response;
+      return { data: data as T, error: null };
     } catch (error) {
       return { data: null, error: this.parseError(error) };
     }
@@ -122,14 +144,14 @@ export class NeuroInfoApiClient {
    * Fetches a specific VOD by stream ID.
    * @docs https://github.com/Appstun/NeuroInfoAPI-Docs/blob/master/twitch.md#specific-vod-1
    */
-  public getVod = (streamId: string) => this.request<TwitchVod>("/twitch/vod", { streamId });
+  public getVod = (id: string) => this.request<TwitchVod>("/twitch/vod", { id });
 
   /**
-   * Fetches the schedule for a specific year and week. If no parameters are provided, fetches the current week's schedule.
+   * Fetches the schedule for a specific week and year.
    * @docs https://github.com/Appstun/NeuroInfoAPI-Docs/blob/master/schedule.md#specific-weekly-schedule-1
    */
-  public getSchedule = (year?: number, week?: number) =>
-    this.request<ScheduleResponse>("/schedule", year || week ? { year, week } : undefined);
+  public getSchedule = (week: number, year?: number) =>
+    this.request<ScheduleResponse>("/schedule", { week, ...(year !== undefined ? { year } : {}) });
 
   /**
    * Fetches the latest weekly schedule.
@@ -142,6 +164,11 @@ export class NeuroInfoApiClient {
    * @docs https://github.com/Appstun/NeuroInfoAPI-Docs/blob/master/schedule.md#schedule-weeks-index-1
    */
   public getScheduleWeeks = () => this.request<ScheduleWeeksResponse>("/schedule/weeks");
+
+  /**
+   * Fetches the devstream schedule times.
+   */
+  public getDevstreamTimes = () => this.request<number[]>("/devstream/times");
 
   /**
    * Searches schedule entries by message text with optional filters and cursor pagination.
@@ -168,7 +195,7 @@ export class NeuroInfoApiClient {
    * Fetches the current active subathons.
    * @docs https://github.com/Appstun/NeuroInfoAPI-Docs/blob/master/subathon.md#current-subathon-1
    */
-  public getCurrentSubathons = () => this.request<SubathonData[]>("/subathon/current");
+  public getCurrentSubathons = () => this.request<SubathonData[]>("/subathon");
 
   /**
    * Fetches subathon data for a specific year.
@@ -180,20 +207,13 @@ export class NeuroInfoApiClient {
    * Fetches the years for which subathon data is available.
    * @docs https://github.com/Appstun/NeuroInfoAPI-Docs/blob/master/subathon.md#subathon-years-1
    */
-  public getSubathonYears(detailed: true): Promise<ApiResult<SubathonYearsDetailedResponse>>;
-  public getSubathonYears(detailed?: false): Promise<ApiResult<SubathonYearsResponse>>;
-  public getSubathonYears(detailed: boolean = false): Promise<ApiResult<SubathonYearsResponse | SubathonYearsDetailedResponse>> {
-    return this.request<SubathonYearsResponse | SubathonYearsDetailedResponse>(
-      "/subathon/years",
-      detailed ? { detailed: true } : undefined,
-    );
-  }
+  public getSubathonYears = () => this.request<SubathonYearsResponse>("/subathon/years");
 
   /**
    * Fetches the Neuro-sama blog feed. Requires an API token.
    * @docs https://github.com/Appstun/NeuroInfoAPI-Docs/blob/master/blog.md#endpoint
    */
-  public getBlogFeed = (raw: boolean = false) => this.request<BlogFeedResponse>("/blog/feed", raw ? { raw: true } : undefined);
+  public getBlogFeed = (raw: boolean = false) => this.request<BlogFeedData>("/blog", raw ? { raw: true } : undefined);
 }
 
 /**
@@ -1127,10 +1147,6 @@ export interface BlogFeedData {
   entries: BlogFeedEntry[];
 }
 
-export interface BlogFeedResponse {
-  data: BlogFeedData;
-}
-
 export interface WsBlogFeedUpdateData extends BlogFeedData {}
 
 /** Event data for subathonUpdate event. */
@@ -1171,6 +1187,11 @@ interface WsWelcomeMessage {
   data: { sessionId: string };
 }
 
+interface WsAuthSuccessMessage {
+  type: "authSuccess";
+  data: Record<string, never>;
+}
+
 interface WsInvalidMessage {
   type: "invalid";
   data: { reason: WsInvalidReason; message?: string };
@@ -1203,6 +1224,7 @@ interface WsEventMessage<T extends WsEventType = WsEventType> {
 
 export type WsServerMessage =
   | WsWelcomeMessage
+  | WsAuthSuccessMessage
   | WsInvalidMessage
   | WsAddSuccessMessage
   | WsRemoveSuccessMessage
@@ -1343,8 +1365,7 @@ export interface SubathonData {
   endTimestamp?: number; // Unix timestamp
 }
 
-export type SubathonYearsResponse = number[];
-export type SubathonYearsDetailedResponse = Record<number, string>;
+export type SubathonYearsResponse = Record<number, string>;
 
 export interface SubathonGoal {
   name: string;
