@@ -553,16 +553,17 @@ export class NeuroInfoApiWebsocketClient {
    */
   constructor(token: string, options: NeuroInfoApiWebsocketClientOptions = {}) {
     this.token = token;
-    this.baseUrl = options.baseUrl ?? `wss://${baseDomain}/api/ws`;
+    this.baseUrl = options.baseUrl ?? `wss://${baseDomain}/api/v2/ws`;
     this.authMethod = options.authMethod ?? "ticket";
     if (options.autoHeartbeat != null) this.autoHeartbeat = options.autoHeartbeat;
     if (options.heartbeatIntervalMs != null) this.heartbeatIntervalMs = options.heartbeatIntervalMs;
     if (options.heartbeatTimeoutMs != null) this.heartbeatTimeoutMs = options.heartbeatTimeoutMs;
     // API base URL for ticket fetching (no version prefix)
-    this.apiBaseUrl = options.apiBaseUrl ?? this.baseUrl.replace(/^wss?:\/\//, "https://").replace(/\/api\/ws.*$/, "/api");
+    this.apiBaseUrl = options.apiBaseUrl ?? this.baseUrl.replace(/^wss?:\/\//, "https://").replace(/\/api\/(?:v2\/)?ws.*$/, "/api");
 
-    // Boot check: warn if using deprecated v1 (check both baseUrl and apiBaseUrl)
+    // Boot check: warn if using deprecated v1 REST or WebSocket endpoints
     if (this.baseUrl.includes("/api/v1") || this.apiBaseUrl.includes("/api/v1")) bootCheck(this.apiBaseUrl);
+    else if (this.baseUrl.includes("/api/ws") && !this.baseUrl.includes("/api/v2/ws")) bootCheck(this.apiBaseUrl);
   }
 
   /** Returns the current connection state. */
@@ -995,7 +996,7 @@ export class NeuroInfoApiWebsocketClient {
  */
 export interface NeuroInfoApiWebsocketClientOptions {
   /**
-   * WebSocket server URL. Defaults to `wss://neuro.appstun.net/api/ws`.
+   * WebSocket server URL. Defaults to `wss://neuro.appstun.net/api/v2/ws`.
    */
   baseUrl?: string;
   /**
@@ -1115,8 +1116,16 @@ export interface WsStreamRaidData {
   viewerCount: number;
 }
 
-/** Event data for scheduleUpdate event. */
+/** Event data for scheduleUpdate on v2 WebSocket connections. */
 export interface WsScheduleUpdateData {
+  year: number;
+  week: number;
+  schedule: ScheduleEntry[];
+  status: ScheduleStatus;
+}
+
+/** Event data for scheduleUpdate on deprecated v1 WebSocket connections (`/api/ws`). */
+export interface WsScheduleUpdateDataV1 {
   year: number;
   week: number;
   schedule: ScheduleEntry[];
@@ -1266,7 +1275,7 @@ export interface ApiClientEvents {
   streamOnline: TwitchStreamData;
   streamOffline: TwitchStreamData;
   streamUpdate: TwitchStreamData;
-  scheduleUpdate: ScheduleLatestResponse;
+  scheduleUpdate: WsScheduleUpdateData;
   subathonUpdate: SubathonData;
   subathonGoalUpdate: { subathon: SubathonData; goal: SubathonGoal; goalNumber: number };
 }
@@ -1306,11 +1315,17 @@ export interface TwitchVod {
   thumbnailUrl: string;
 }
 
+export type ScheduleStatus = "auto_twitch" | "auto_discord" | "confirmed";
+
+export function isScheduleFinal(status: ScheduleStatus): boolean {
+  return status === "confirmed";
+}
+
 export interface ScheduleResponse {
   year: number;
   week: number;
   schedule: ScheduleEntry[];
-  isFinal: boolean;
+  status: ScheduleStatus;
 }
 
 export interface ScheduleLatestResponse extends ScheduleResponse {
@@ -1339,7 +1354,7 @@ export interface ScheduleSearchResultItem {
     year: number;
     week: number;
     schedule: ScheduleEntry[];
-    isFinal: boolean;
+    status: ScheduleStatus;
   };
 }
 
