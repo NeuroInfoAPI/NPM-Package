@@ -1,6 +1,6 @@
 {
   "name": "neuroinfoapi-client",
-  "version": "2.0.0-beta.1",
+  "version": "2.0.0-beta.2",
   "description": "A client for interacting with the NeuroInfoAPI",
   "type": "module",
   "main": "./dist/index.js",
