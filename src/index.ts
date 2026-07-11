@@ -1,1 +1,1 @@
-export * from "./NeuroInfoAPI-Client";
+export * from "./NeuroInfoAPI-Client.js";
