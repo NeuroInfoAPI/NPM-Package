@@ -1,4 +1,5 @@
 const scheduleTypes = new Set(["normal", "offline", "canceled", "TBD", "unknown"]);
+const scheduleStatuses = new Set(["auto_twitch", "auto_discord", "confirmed"]);
 
 export function assertTwitchStreamData(data: Record<string, unknown>) {
   expect(typeof data.isLive).toBe("boolean");
@@ -44,7 +45,7 @@ export function assertScheduleResponse(data: Record<string, unknown>) {
   expect(typeof data.year).toBe("number");
   expect(typeof data.week).toBe("number");
   expect(Array.isArray(data.schedule)).toBe(true);
-  expect(typeof data.isFinal).toBe("boolean");
+  expect(scheduleStatuses.has(data.status as string)).toBe(true);
   for (const entry of data.schedule as Record<string, unknown>[]) {
     assertScheduleEntry(entry);
   }
