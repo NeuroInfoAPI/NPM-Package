@@ -1,5 +1,6 @@
 const scheduleTypes = new Set(["normal", "offline", "canceled", "TBD", "unknown"]);
 const scheduleStatuses = new Set(["auto_twitch", "auto_discord", "confirmed"]);
+const xFeedEntryTypes = new Set(["tweet", "reply", "retweet"]);
 
 export function assertTwitchStreamData(data: Record<string, unknown>) {
   expect(typeof data.isLive).toBe("boolean");
@@ -91,4 +92,39 @@ export function assertBlogFeedData(data: Record<string, unknown>, expectRaw = fa
       expect(typeof entry.rawContent).toBe("string");
     }
   }
+}
+
+export function assertXFeedData(data: Record<string, unknown>, expectRaw = false) {
+  const metadata = data.metadata as Record<string, unknown>;
+  const placeholders = metadata.placeholders as Record<string, unknown>;
+  expect(typeof placeholders.nitterHost).toBe("string");
+  expect(Array.isArray(data.entries)).toBe(true);
+  expect((data.entries as unknown[]).length).toBeGreaterThan(0);
+
+  let hasRawContent = false;
+  for (const entry of data.entries as Record<string, unknown>[]) {
+    expect(typeof entry.id).toBe("string");
+    expect(xFeedEntryTypes.has(entry.type as string)).toBe(true);
+    expect(typeof (entry.author as Record<string, unknown>).username).toBe("string");
+    expect(typeof entry.url).toBe("string");
+    expect(typeof entry.createdTimestamp).toBe("number");
+    expect(Array.isArray(entry.media)).toBe(true);
+
+    if (entry.content != null) expect(typeof entry.content).toBe("string");
+    if (entry.rawContent != null) {
+      expect(typeof entry.rawContent).toBe("string");
+      hasRawContent = true;
+    }
+    if (entry.replyTo != null) expect(typeof (entry.replyTo as Record<string, unknown>).username).toBe("string");
+    if (entry.retweetedBy != null) expect(typeof (entry.retweetedBy as Record<string, unknown>).username).toBe("string");
+
+    for (const media of entry.media as Record<string, unknown>[]) {
+      expect(media.type === "image" || media.type === "video").toBe(true);
+      expect(typeof media.url).toBe("string");
+      if (media.posterUrl != null) expect(typeof media.posterUrl).toBe("string");
+      if (media.mimeType != null) expect(typeof media.mimeType).toBe("string");
+    }
+  }
+
+  if (expectRaw) expect(hasRawContent).toBe(true);
 }
