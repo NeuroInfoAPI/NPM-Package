@@ -80,7 +80,14 @@ try {
     }
 
     $env:NIAC_PUBLISH_WRAPPER_ACTIVE = "1"
-    $publishResult = Invoke-Npm --loglevel error publish
+    $packageVersion = (Get-Content -Raw (Join-Path $PSScriptRoot "package.json") | ConvertFrom-Json).version
+    $publishArguments = @("--loglevel", "error", "publish")
+    if ($packageVersion -match "beta") {
+        $publishArguments += @("--tag", "beta")
+        Write-Host "Beta version detected, publishing with beta tag." -ForegroundColor Yellow
+    }
+
+    $publishResult = Invoke-Npm @publishArguments
 
     if ($publishResult.ExitCode -eq 0) {
         Write-Host "Published successfully!" -ForegroundColor Green
