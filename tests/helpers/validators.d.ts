@@ -6,3 +6,4 @@ export declare function assertScheduleLatestResponse(data: Record<string, unknow
 export declare function assertSubathonGoal(goal: Record<string, unknown>): void;
 export declare function assertSubathonData(data: Record<string, unknown>): void;
 export declare function assertBlogFeedData(data: Record<string, unknown>, expectRaw?: boolean): void;
+export declare function assertXFeedData(data: Record<string, unknown>, expectRaw?: boolean): void;

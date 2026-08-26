@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { NeuroApiError } from "../dist/index.js";
 import { assertDeepEqual, assertResultsMatch, fetchDirect, fetchDirectResult } from "./helpers/direct-api.ts";
-import { assertBlogFeedData, assertScheduleLatestResponse, assertScheduleResponse, assertSubathonData, assertTwitchStreamData, assertTwitchVod, } from "./helpers/validators.ts";
+import { assertBlogFeedData, assertScheduleLatestResponse, assertScheduleResponse, assertSubathonData, assertTwitchStreamData, assertTwitchVod, assertXFeedData, } from "./helpers/validators.ts";
 import { createClient, expectFailure, expectSuccess } from "./setup.ts";
+const X_FEED_ACCOUNTS = ["NeurosamaAI", "EvilNeuroAI", "Vedal987"];
 describe("NeuroInfoApiClient REST", () => {
     const client = createClient();
     test("getCurrentStream matches direct API and shape", async () => {
@@ -127,6 +128,31 @@ describe("NeuroInfoApiClient REST", () => {
         const direct = await fetchDirect("/blog", { raw: true });
         assertBlogFeedData(data, true);
         assertDeepEqual(data, direct, "getBlogFeed(raw)");
+    }, 15000);
+    test("getXFeed matches direct API and shape", async () => {
+        for (const user of X_FEED_ACCOUNTS) {
+            const data = expectSuccess(await client.getXFeed(user));
+            const direct = await fetchDirect("/x-feed", { user });
+            assertXFeedData(data);
+            assertDeepEqual(data.entries, direct, `getXFeed(${user})`);
+        }
+    }, 15000);
+    test("getXFeed raw replaces Nitter placeholders", async () => {
+        const nitterHost = "https://nitter.example";
+        const data = expectSuccess(await client.getXFeed("NeurosamaAI", true, nitterHost));
+        const placeholder = data.metadata.placeholders.nitterHost;
+        assertXFeedData(data, true);
+        const urls = data.entries.flatMap((entry) => [
+            entry.url,
+            ...(entry.rawContent ? [entry.rawContent] : []),
+            ...entry.media.flatMap((media) => [
+                media.url,
+                ...(media.type === "video" && media.posterUrl ? [media.posterUrl] : []),
+            ]),
+        ]);
+        expect(urls.some((url) => url.includes(nitterHost))).toBe(true);
+        for (const url of urls)
+            expect(url.includes(placeholder)).toBe(false);
     }, 15000);
     test("setApiToken updates client auth header", async () => {
         const tokenless = createClient(undefined);

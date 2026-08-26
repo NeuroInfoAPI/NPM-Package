@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { NeuroInfoApiWebsocketClient, type WsEventType } from "../dist/index.js";
+import { NeuroInfoApiWebsocketClient, type WsEventType, type XFeedUpdateData } from "../dist/index.js";
 import { API_TOKEN, WS_BASE } from "./setup.ts";
 
 const ALL_EVENTS: WsEventType[] = [
   "blogFeedUpdate",
+  "xFeedUpdate",
   "scheduleUpdate",
   "subathonUpdate",
   "subathonGoalUpdate",
@@ -113,19 +114,76 @@ describe("NeuroInfoApiWebsocketClient", () => {
 
     const unsubSchedule = ws.on("scheduleUpdate", () => {});
     const unsubStream = ws.on("streamUpdate", () => {});
+    const unsubXFeed = ws.on("xFeedUpdate", () => {});
 
     await waitFor(() =>
-      added.includes("scheduleUpdate") && added.includes("streamUpdate") ? true : undefined,
+      added.includes("scheduleUpdate") && added.includes("streamUpdate") && added.includes("xFeedUpdate") ? true : undefined,
     );
 
     const subscribed = ws.getSubscribedEvents();
     expect(subscribed).toContain("scheduleUpdate");
     expect(subscribed).toContain("streamUpdate");
+    expect(subscribed).toContain("xFeedUpdate");
 
     unsubSchedule();
     unsubStream();
+    unsubXFeed();
     ws.destroy();
   }, 20000);
+
+  test("xFeedUpdate replaces Nitter placeholders", () => {
+    const ws = new NeuroInfoApiWebsocketClient(API_TOKEN, {
+      baseUrl: WS_BASE,
+      autoHeartbeat: false,
+    });
+    const placeholder = "https://nitter.invalid";
+    ws.nitterHost = "https://nitter.example";
+
+    let received: XFeedUpdateData | undefined;
+    let timestamp: number | undefined;
+    const unsub = ws.on("xFeedUpdate", (data, eventTimestamp) => {
+      received = data;
+      timestamp = eventTimestamp;
+    });
+
+    (ws as any).handleParsedMessage({
+      type: "event",
+      data: {
+        eventType: "xFeedUpdate",
+        timestamp: 123,
+        eventData: {
+          user: "Vedal987",
+          metadata: { placeholders: { nitterHost: placeholder } },
+          entries: [
+            {
+              id: "1",
+              type: "tweet",
+              author: { username: "Vedal987" },
+              url: `${placeholder}/Vedal987/status/1`,
+              createdTimestamp: 123,
+              rawContent: `<a href="${placeholder}/Vedal987/status/1">post</a>`,
+              media: [
+                {
+                  type: "video",
+                  url: `${placeholder}/video/1`,
+                  posterUrl: `${placeholder}/poster/1`,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(timestamp).toBe(123);
+    expect(received?.entries[0].url).toBe("https://nitter.example/Vedal987/status/1");
+    expect(received?.entries[0].rawContent).toContain("https://nitter.example/Vedal987/status/1");
+    expect(received?.entries[0].media[0].url).toBe("https://nitter.example/video/1");
+    expect(received?.entries[0].media[0]).toMatchObject({ posterUrl: "https://nitter.example/poster/1" });
+
+    unsub();
+    ws.destroy();
+  });
 
   test("heartbeat receives pong", async () => {
     const ws = new NeuroInfoApiWebsocketClient(API_TOKEN, {

@@ -1,4 +1,5 @@
 const scheduleTypes = new Set(["normal", "offline", "canceled", "TBD", "unknown"]);
+const xFeedEntryTypes = new Set(["tweet", "reply", "retweet"]);
 export function assertTwitchStreamData(data) {
     expect(typeof data.isLive).toBe("boolean");
     if (data.isLive) {
@@ -81,4 +82,40 @@ export function assertBlogFeedData(data, expectRaw = false) {
             expect(typeof entry.rawContent).toBe("string");
         }
     }
+}
+export function assertXFeedData(data, expectRaw = false) {
+    const metadata = data.metadata;
+    const placeholders = metadata.placeholders;
+    expect(typeof placeholders.nitterHost).toBe("string");
+    expect(Array.isArray(data.entries)).toBe(true);
+    expect(data.entries.length).toBeGreaterThan(0);
+    let hasRawContent = false;
+    for (const entry of data.entries) {
+        expect(typeof entry.id).toBe("string");
+        expect(xFeedEntryTypes.has(entry.type)).toBe(true);
+        expect(typeof entry.author.username).toBe("string");
+        expect(typeof entry.url).toBe("string");
+        expect(typeof entry.createdTimestamp).toBe("number");
+        expect(Array.isArray(entry.media)).toBe(true);
+        if (entry.content != null)
+            expect(typeof entry.content).toBe("string");
+        if (entry.rawContent != null) {
+            expect(typeof entry.rawContent).toBe("string");
+            hasRawContent = true;
+        }
+        if (entry.replyTo != null)
+            expect(typeof entry.replyTo.username).toBe("string");
+        if (entry.retweetedBy != null)
+            expect(typeof entry.retweetedBy.username).toBe("string");
+        for (const media of entry.media) {
+            expect(media.type === "image" || media.type === "video").toBe(true);
+            expect(typeof media.url).toBe("string");
+            if (media.posterUrl != null)
+                expect(typeof media.posterUrl).toBe("string");
+            if (media.mimeType != null)
+                expect(typeof media.mimeType).toBe("string");
+        }
+    }
+    if (expectRaw)
+        expect(hasRawContent).toBe(true);
 }
