@@ -1,6 +1,6 @@
 {
   "name": "neuroinfoapi-client",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "A client for interacting with the NeuroInfoAPI",
   "type": "module",
   "main": "./dist/index.js",
@@ -20,7 +20,8 @@
     "build": "tsc -p tsconfig.json",
     "clean": "powershell -NoProfile -Command \"if (Test-Path dist) { Remove-Item dist -Recurse -Force }\"",
     "test": "bun test tests",
-    "publishPackage": "powershell -ExecutionPolicy Bypass -File .\\publishAsk.ps1"
+    "publishPackage": "powershell -ExecutionPolicy Bypass -File .\\publishAsk.ps1",
+    "deprecatePackage": "powershell -ExecutionPolicy Bypass -File .\\deprecateAsk.ps1"
   },
   "keywords": [
     "neuroinfoapi",
@@ -38,5 +39,8 @@
     "type": "git",
     "url": "https://github.com/NeuroInfoAPI/NPM-Package.git"
   },
-  "homepage": "https://neuro.appstun.net/api/docs"
+  "homepage": "https://neuro.appstun.net/api/docs",
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
 }
