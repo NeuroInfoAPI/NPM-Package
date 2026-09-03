@@ -41,8 +41,18 @@ if (error) {
 Constructor signature:
 
 ```ts
-new NeuroInfoApiClient(token?: string, options?: { baseUrl?: string })
+new NeuroInfoApiClient(token?: string, options?: NeuroInfoApiClientOptions)
 ```
+
+`NeuroInfoApiClientOptions` supports:
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `apiBaseUrl` | `neuro.appstun.net/api/v2` | API host and path without a protocol |
+| `useTls` | `true` | Use HTTPS when `true`, HTTP when `false` |
+| `requestTimeoutMs` | `10000` | HTTP request timeout in milliseconds |
+
+The legacy `baseUrl` option is deprecated and will be removed in a future major version.
 
 Examples:
 
@@ -58,7 +68,9 @@ const clientB = new NeuroInfoApiClient("your-api-token-here");
 
 // 3) Custom API URL (self-hosted or staging)
 const clientC = new NeuroInfoApiClient("your-api-token-here", {
-  baseUrl: "https://your-domain.example/api/v1",
+  apiBaseUrl: "your-domain.example/api/v2",
+  useTls: true,
+  requestTimeoutMs: 15000,
 });
 ```
 
@@ -79,7 +91,7 @@ For browsers, keep `authMethod` as the default (`"ticket"`).
 
 ## Error Handling
 
-All client methods return a result object with either `data` or `error`:
+All HTTP API request methods return a result object with either `data` or `error`:
 
 ```ts
 const { data, error } = await client.getCurrentStream();
@@ -90,9 +102,31 @@ if (error) {
   return;
 }
 
-// TypeScript knows data is TwitchStreamData here
-console.log(data.title);
+// data is TwitchStreamState. Live-only fields are available after narrowing.
+if (data.isLive) {
+  console.log(data.title);
+} else {
+  console.log("Stream is offline");
+}
 ```
+
+## HTTP API Methods
+
+All methods below return `Promise<ApiResult<T>>`:
+
+- `getCurrentStream()` — current Twitch stream state
+- `getAllVods()` — all Twitch VODs
+- `getVod(id)` — a VOD by stream ID
+- `getSchedule(week, year?)` — schedule for a specific week and optional year
+- `getLatestSchedule()` — latest schedule
+- `getScheduleWeeks()` — available schedule weeks grouped by year
+- `getDevstreamTimes()` — devstream schedule timestamps
+- `getScheduleSearch(query, options?)` — search schedules with filters and cursor pagination
+- `getCurrentSubathons()` — currently active subathons
+- `getSubathon(year)` — subathon data for a year
+- `getSubathonYears()` — available subathon years
+- `getBlogFeed(raw?)` — Neuro-sama blog feed; requires an API token
+- `getXFeed(user)` — cached X feed for `NeurosamaAI`, `EvilNeuroAI`, or `Vedal987`; requires an API token
 
 ## Schedule Search Pagination
 
@@ -148,6 +182,14 @@ Available events: `streamOnline`, `streamOffline`, `streamUpdate`, `scheduleUpda
 
 ## WebSocket Client
 
+Constructor signature:
+
+```ts
+new NeuroInfoApiWebsocketClient(token: string, options?: NeuroInfoApiWebsocketClientOptions)
+```
+
+The options include `apiBaseUrl`, `useTls`, `websocketUrl`, `authMethod`, `autoReconnect`, `maxReconnectAttempts`, `reconnectBaseDelay`, `autoHeartbeat`, `heartbeatIntervalMs`, `heartbeatTimeoutMs`, and `connectTimeoutMs`. The legacy WebSocket `baseUrl` option is deprecated; use `websocketUrl` for a full URL override.
+
 ```ts
 import { NeuroInfoApiWebsocketClient } from "neuroinfoapi-client";
 
@@ -184,7 +226,8 @@ Available WebSocket events:
 - `subathonUpdate`
 - `subathonGoalUpdate`
 - `blogFeedUpdate`
-- `xFeedUpdate`
+- `xFeedNewEntries`
+- `xFeedUpdate` (deprecated alias for `xFeedNewEntries`)
 
 **Heartbeat:** While connected, the client periodically sends a JSON `ping` and expects a `pong` from the server (default interval **30s**, pong timeout **10s**). If the pong is missing, the socket is closed and automatic reconnect runs—this detects stale or half-open connections. Disable or tune via constructor options: `autoHeartbeat`, `heartbeatIntervalMs` (minimum 5000), `heartbeatTimeoutMs` (minimum 1000). Keep the ping interval below the server WebSocket idle timeout if you self-host with aggressive idle limits.
 
