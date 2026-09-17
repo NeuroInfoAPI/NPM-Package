@@ -8,11 +8,56 @@ importers:
 
   .:
     devDependencies:
+      '@types/bun':
+        specifier: ^1.4.2
+        version: 1.4.2
+      '@types/node':
+        specifier: ^26.6.1
+        version: 26.6.1
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
 
+  packages/bun:
+    dependencies:
+      '@neuroinfoapi-client/core':
+        specifier: 2.6.0
+        version: link:../core
+
+  packages/core: {}
+
+  packages/native:
+    dependencies:
+      '@neuroinfoapi-client/core':
+        specifier: 2.6.0
+        version: link:../core
+
+  packages/node:
+    dependencies:
+      '@neuroinfoapi-client/core':
+        specifier: 2.6.0
+        version: link:../core
+      ws:
+        specifier: ^8.21.3
+        version: 8.21.3
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.1
+        version: 26.6.1
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
+
 packages:
+
+  '@types/bun@1.4.2':
+    resolution: {integrity: sha512-GimotNn7+ZV0uVArItBbriZsR1oNf0+WTzPkdcFrzShI7k2norL0uzEaJT8T33dWr7O/c9ZDuAFQrctKCi72oQ==}
+
+  '@types/node@26.6.1':
+    resolution: {integrity: sha512-VqGJBMCtdhqkBUCcBLvywI0NJ+KLuVzgNnlBUNFOQjqVxzo2lxLUNg1DSey8+u2u6ktswSAxg+s68QLzWHNOuA==}
+
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
@@ -134,12 +179,42 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  bun-types@1.4.2:
+    resolution: {integrity: sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w==}
+
   typescript@7.0.2:
     resolution: {integrity: sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA==}
     engines: {node: '>=16.20.0'}
     hasBin: true
 
+  undici-types@8.9.0:
+    resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
+
+  ws@8.21.3:
+    resolution: {integrity: sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
 snapshots:
+
+  '@types/bun@1.4.2':
+    dependencies:
+      bun-types: 1.4.2
+
+  '@types/node@26.6.1':
+    dependencies:
+      undici-types: 8.9.0
+
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 26.6.1
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     optional: true
@@ -201,6 +276,10 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
+  bun-types@1.4.2:
+    dependencies:
+      '@types/node': 26.6.1
+
   typescript@7.0.2:
     optionalDependencies:
       '@typescript/typescript-aix-ppc64': 7.0.2
@@ -223,3 +302,7 @@ snapshots:
       '@typescript/typescript-sunos-x64': 7.0.2
       '@typescript/typescript-win32-arm64': 7.0.2
       '@typescript/typescript-win32-x64': 7.0.2
+
+  undici-types@8.9.0: {}
+
+  ws@8.21.3: {}

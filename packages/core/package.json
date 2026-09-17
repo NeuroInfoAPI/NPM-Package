@@ -1,0 +1,40 @@
+{
+  "name": "@neuroinfoapi-client/core",
+  "version": "2.6.0",
+  "description": "Shared HTTP client, types and WebSocket protocol logic for NeuroInfoAPI-Client (Bun, Node.js, Native)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/*.js",
+    "dist/*.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "publishPackage": "powershell -NoProfile -ExecutionPolicy Bypass -File ../../scripts/publishAsk.ps1 -Package core",
+    "deprecatePackage": "powershell -NoProfile -ExecutionPolicy Bypass -File ../../scripts/deprecateAsk.ps1 -Package core"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Appstun",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NeuroInfoAPI/NPM-Package.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/NeuroInfoAPI/NPM-Package/issues"
+  },
+  "homepage": "https://neuro.appstun.net/api/docs"
+}

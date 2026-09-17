@@ -1,46 +1,22 @@
 {
-  "name": "neuroinfoapi-client",
-  "version": "2.6.0",
-  "description": "A client for interacting with the NeuroInfoAPI",
+  "name": "neuroinfoapi-client-workspace",
+  "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "clean": "powershell -NoProfile -Command \"if (Test-Path dist) { Remove-Item dist -Recurse -Force }\"",
-    "test": "bun test tests",
-    "publishPackage": "powershell -ExecutionPolicy Bypass -File .\\publishAsk.ps1",
-    "deprecatePackage": "powershell -ExecutionPolicy Bypass -File .\\deprecateAsk.ps1"
+    "build": "tsc -b packages/core packages/native packages/node packages/bun",
+    "typecheck": "bun run --cwd packages/core build && bun run --filter \"@neuroinfoapi-client/*\" typecheck",
+    "publishPackage": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/publishAsk.ps1",
+    "deprecatePackage": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/deprecateAsk.ps1",
+    "clean": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/clean.ps1",
+    "setVersions": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/setVersions.ps1",
+    "update": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/update.ps1"
   },
-  "keywords": [
-    "neuroinfoapi",
-    "nia",
-    "vedal987",
-    "neurosama",
-    "neuro-sama"
-  ],
-  "author": "Appstun",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/NeuroInfoAPI/NPM-Package/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/NeuroInfoAPI/NPM-Package.git"
-  },
-  "homepage": "https://neuro.appstun.net/api/docs",
   "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@types/node": "^26.6.1",
     "typescript": "^7.0.2"
   }
 }
