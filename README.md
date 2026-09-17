@@ -1,3 +1,9 @@
+> [!IMPORTANT]
+> This packages got replaced with [`@neuroinfoapi-client/native`](https://www.npmjs.com/package/@neuroinfoapi-client/native) and will no longer be updated.
+> The new package works the same way.
+
+You can find the old client's source code [here](https://github.com/NeuroInfoAPI/NPM-Package/tree/old-client_2.6.0).
+
 # neuroinfoapi-client
 
 A comprehensive TypeScript/JavaScript client that provides full access to NeuroInfoAPI endpoints with proper type definitions.
@@ -46,11 +52,11 @@ new NeuroInfoApiClient(token?: string, options?: NeuroInfoApiClientOptions)
 
 `NeuroInfoApiClientOptions` supports:
 
-| Option | Default | Description |
-| --- | --- | --- |
-| `apiBaseUrl` | `neuro.appstun.net/api/v2` | API host and path without a protocol |
-| `useTls` | `true` | Use HTTPS when `true`, HTTP when `false` |
-| `requestTimeoutMs` | `10000` | HTTP request timeout in milliseconds |
+| Option             | Default                    | Description                              |
+| ------------------ | -------------------------- | ---------------------------------------- |
+| `apiBaseUrl`       | `neuro.appstun.net/api/v2` | API host and path without a protocol     |
+| `useTls`           | `true`                     | Use HTTPS when `true`, HTTP when `false` |
+| `requestTimeoutMs` | `10000`                    | HTTP request timeout in milliseconds     |
 
 The legacy `baseUrl` option is deprecated and will be removed in a future major version.
 

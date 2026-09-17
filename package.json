@@ -1,6 +1,6 @@
 {
   "name": "neuroinfoapi-client",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "description": "A client for interacting with the NeuroInfoAPI",
   "type": "module",
   "main": "./dist/index.js",
@@ -23,22 +23,9 @@
     "publishPackage": "powershell -ExecutionPolicy Bypass -File .\\publishAsk.ps1",
     "deprecatePackage": "powershell -ExecutionPolicy Bypass -File .\\deprecateAsk.ps1"
   },
-  "keywords": [
-    "neuroinfoapi",
-    "nia",
-    "vedal987",
-    "neurosama",
-    "neuro-sama"
-  ],
+  "keywords": [],
   "author": "Appstun",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/NeuroInfoAPI/NPM-Package/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/NeuroInfoAPI/NPM-Package.git"
-  },
   "homepage": "https://neuro.appstun.net/api/docs",
   "devDependencies": {
     "typescript": "^7.0.2"
