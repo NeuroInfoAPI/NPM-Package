@@ -61,7 +61,7 @@ try {
         # Preflight all versions before uploading. Identical releases can be resumed.
         foreach ($name in $selected) {
             $artifact = $artifacts[$name]
-            $existing = Invoke-Npm -Arguments @('view', $artifact.id, 'dist.integrity', '--json', '--registry=https://registry.npmjs.org/')
+            $existing = Invoke-Npm -Arguments @('view', $artifact.id, 'dist.integrity', '--json', '--prefer-online', '--registry=https://registry.npmjs.org/')
             if ($existing.ExitCode -eq 0) {
                 $integrity = $existing.Output | ConvertFrom-Json
                 if ($integrity -ne $artifact.integrity) { throw "$($artifact.id) already exists with different contents. Bump its version before publishing." }
@@ -76,16 +76,21 @@ try {
                 if ($Matches[1] -match '^[0-9]+$') { 'next' } else { $Matches[1] }
             } else { 'latest' }
             Write-Host "Publishing $($artifact.id) with tag $tag..." -ForegroundColor Cyan
-            Write-Host (Invoke-NpmChecked -Arguments @('publish', (Join-Path $releaseDirectory $artifact.filename), '--access', 'public', '--tag', $tag, '--ignore-scripts', '--registry=https://registry.npmjs.org/'))
+            $upload = Invoke-Npm -Arguments @('publish', (Join-Path $releaseDirectory $artifact.filename), '--access', 'public', '--tag', $tag, '--ignore-scripts', '--registry=https://registry.npmjs.org/')
+            if ($upload.ExitCode -ne 0) {
+                if ($upload.Output -notmatch 'cannot publish over the previously published versions|EPUBLISHCONFLICT') { throw "npm publish failed: $($upload.Output)" }
+                Write-Host "$($artifact.id) is already reserved on npm. Waiting up to two minutes to verify its contents..." -ForegroundColor Yellow
+                if (!(Wait-NpmPackageIntegrity -PackageId $artifact.id -Integrity $artifact.integrity)) {
+                    throw "$($artifact.id) is already reserved but still not readable from npm. It may still be processing. Wait and rerun later; do not bump the version just to retry."
+                }
+                Write-Host "$($artifact.id) already has identical contents; skipping."
+            } else { Write-Host $upload.Output }
             $published += $artifact.id
             if ($name -eq 'core' -and $selected.Count -gt 1) {
-                $visible = $false
-                for ($attempt = 0; $attempt -lt 6; $attempt++) {
-                    $check = Invoke-Npm -Arguments @('view', $artifact.id, 'dist.integrity', '--json', '--prefer-online', '--registry=https://registry.npmjs.org/')
-                    if ($check.ExitCode -eq 0 -and ($check.Output | ConvertFrom-Json) -eq $artifact.integrity) { $visible = $true; break }
-                    Start-Sleep -Seconds 2
+                Write-Host 'Waiting up to two minutes for Core to become readable from npm...' -ForegroundColor Cyan
+                if (!(Wait-NpmPackageIntegrity -PackageId $artifact.id -Integrity $artifact.integrity)) {
+                    throw 'Core was accepted by npm but is still not readable. Wait and rerun later; identical versions will be skipped. No version bump is needed to resume.'
                 }
-                if (!$visible) { throw 'Core was uploaded but is not yet visible. Rerun later; identical versions will be skipped.' }
             }
         }
         Write-Host 'Release complete.' -ForegroundColor Green

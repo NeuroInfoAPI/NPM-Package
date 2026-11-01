@@ -16,6 +16,10 @@ Publishing prompts for an npm token and skips identical published versions;
 changed contents require a version bump. Stable releases use `latest`, prereleases
 their identifier (`beta`, `rc`, etc.) or `next` for numeric identifiers.
 
+npm may accept an upload before it becomes readable. Publishing waits up to two
+minutes for Core and checks identical contents after version conflicts. If npm is
+still processing the version, wait and rerun; a version bump is not needed to resume.
+
 Deprecation targets `core`, `native`, `node`, `bun`, or `legacy`
 (`neuroinfoapi-client`). Both commands accept `-DryRun` without registry changes;
 publish permissions are not checked.

@@ -11,6 +11,19 @@ function Invoke-NpmChecked {
     if ($result.ExitCode -ne 0) { throw "npm $($Arguments[0]) failed: $($result.Output)" }
     return $result.Output
 }
+function Wait-NpmPackageIntegrity {
+    param([string]$PackageId, [string]$Integrity, [int]$Attempts = 24, [int]$DelaySeconds = 5)
+    for ($attempt = 0; $attempt -lt $Attempts; $attempt++) {
+        $check = Invoke-Npm -Arguments @('view', $PackageId, 'dist.integrity', '--json', '--prefer-online', '--registry=https://registry.npmjs.org/')
+        if ($check.ExitCode -eq 0) {
+            if (($check.Output | ConvertFrom-Json) -ne $Integrity) { throw "$PackageId already exists with different contents. Bump its version before publishing." }
+            return $true
+        }
+        if ($check.Output -notmatch 'E404') { throw "Registry check failed for ${PackageId}: $($check.Output)" }
+        if ($attempt -lt $Attempts - 1) { Start-Sleep -Seconds $DelaySeconds }
+    }
+    return $false
+}
 function Start-NpmAuthentication {
     $secure = Read-Host 'NPM Auth Token (hidden input, required)' -AsSecureString
     if ($secure.Length -eq 0) { $secure.Dispose(); throw 'NPM auth token is required.' }
