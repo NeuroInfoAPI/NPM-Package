@@ -1,3 +1,5 @@
+import type { WSController } from "./WSController.js";
+
 export type ApiResult<T> = { data: T; error: null } | { data: null; error: NeuroApiError };
 type TimeoutHandle = ReturnType<typeof setTimeout>;
 type IntervalHandle = ReturnType<typeof setInterval>;
@@ -622,14 +624,16 @@ export class NeuroInfoApiEventer {
  * By default uses ticket-based authentication: the client fetches a one-time ticket via
  * REST API before connecting, so the token is never exposed in URL query parameters.
  */
-export class NeuroInfoApiWebsocketClient {
+export abstract class NeuroInfoApiWebsocketClient {
+  protected abstract createWSController(url: string, headers?: Record<string, string>): WSController;
+
   private connection: WsConnectionState | null = null;
   private readonly auth: WsAuthState;
   private readonly urls: ClientUrls;
   private readonly listeners: WsListenerState = { events: new Map(), system: new Map() };
   private readonly reconnect: WsReconnectState = { attempts: 0, timeout: null };
   private readonly lifecycle: WsLifecycleState = { intentionallyClosed: false, destroyGeneration: 0 };
-  private readonly settings: WsClientSettings = { autoReconnect: true, autoHeartbeat: true, maxReconnectAttempts: 10, reconnectBaseDelay: 1000, heartbeatIntervalMs: 30000, heartbeatTimeoutMs: 10000, connectTimeoutMs: 15000 };
+  private readonly settings: WsClientSettings = { autoReconnect: true, heartbeatMonitoring: true, maxReconnectAttempts: 10, reconnectBaseDelay: 1000, heartbeatIntervalMs: 30000, heartbeatTimeoutMs: 10000, connectTimeoutMs: 15000 };
 
   /** Whether to automatically reconnect on disconnect. Default is true. */
   public get autoReconnect(): boolean {
@@ -644,18 +648,27 @@ export class NeuroInfoApiWebsocketClient {
     }
   }
 
-  /** Whether to automatically send heartbeat pings while connected. Default is true. */
-  public get autoHeartbeat(): boolean {
-    return this.settings.autoHeartbeat;
+  /** Enable heartbeat monitoring (JSON pings in native, incoming server pings in Node/Bun). Default is true. */
+  public get heartbeatMonitoring(): boolean {
+    return this.settings.heartbeatMonitoring;
   }
-  public set autoHeartbeat(value: boolean) {
-    if (this.settings.autoHeartbeat === value) return;
-    this.settings.autoHeartbeat = value;
+  public set heartbeatMonitoring(value: boolean) {
+    if (this.settings.heartbeatMonitoring === value) return;
+    this.settings.heartbeatMonitoring = value;
 
     const connection = this.connection;
     if (!connection || !this.isConnected) return;
     if (value) this.startHeartbeat(connection);
     else this.stopHeartbeat(connection);
+  }
+
+  /** @deprecated Use heartbeatMonitoring instead. */
+  public get autoHeartbeat(): boolean {
+    return this.heartbeatMonitoring;
+  }
+  /** @deprecated Use heartbeatMonitoring instead. */
+  public set autoHeartbeat(value: boolean) {
+    this.heartbeatMonitoring = value;
   }
 
   /** Maximum number of reconnect attempts. Default is 10. Set to 0 for unlimited. */
@@ -674,7 +687,7 @@ export class NeuroInfoApiWebsocketClient {
     if (Number.isFinite(value)) this.settings.reconnectBaseDelay = Math.max(100, value);
   }
 
-  /** Interval in milliseconds for heartbeat pings. Default is 30000ms. Minimum is 5000ms. */
+  /** Native only: JSON ping interval, default 30000ms, minimum 5000ms. Node/Bun ignore changes and use a fixed 90-second server-ping timeout. */
   public get heartbeatIntervalMs(): number {
     return this.settings.heartbeatIntervalMs;
   }
@@ -689,7 +702,7 @@ export class NeuroInfoApiWebsocketClient {
     if (connection && heartbeat) this.scheduleHeartbeatInterval(connection, heartbeat);
   }
 
-  /** Timeout in milliseconds waiting for a heartbeat pong. Default is 10000ms. Minimum is 1000ms. */
+  /** Native only: JSON pong timeout, default 10000ms, minimum 1000ms. Node/Bun ignore changes and use a fixed 90-second server-ping timeout. */
   public get heartbeatTimeoutMs(): number {
     return this.settings.heartbeatTimeoutMs;
   }
@@ -727,7 +740,7 @@ export class NeuroInfoApiWebsocketClient {
         }
       : createClientUrls(options.apiBaseUrl, options.useTls);
     if (options.autoReconnect != null) this.autoReconnect = options.autoReconnect;
-    if (options.autoHeartbeat != null) this.autoHeartbeat = options.autoHeartbeat;
+    this.heartbeatMonitoring = options.heartbeatMonitoring ?? options.autoHeartbeat ?? true;
     if (options.maxReconnectAttempts != null) this.maxReconnectAttempts = options.maxReconnectAttempts;
     if (options.reconnectBaseDelay != null) this.reconnectBaseDelay = options.reconnectBaseDelay;
     if (options.heartbeatIntervalMs != null) this.heartbeatIntervalMs = options.heartbeatIntervalMs;
@@ -845,7 +858,7 @@ export class NeuroInfoApiWebsocketClient {
   private async connectInternal(connection: WsConnectionState, connect: WsConnectState): Promise<void> {
     const signal = connect.abortController.signal;
     if (this.auth.method === "header")
-      // Send token via Authorization header (Node.js only, not supported in browsers)
+      // Send token via Authorization header (Node.js/Undici, ws, and Bun; not supported in browsers)
       return this.connectWithUrl(this.urls.websocket, connection, connect, { Authorization: `Bearer ${this.auth.token}` });
     else {
       // Fetch one-time ticket via REST API (token never exposed in URL, works in browsers)
@@ -898,17 +911,9 @@ export class NeuroInfoApiWebsocketClient {
         return;
       }
 
-      // Pass headers using runtime-compatible constructor variants.
-      let socket: WebSocket;
+      let socket: WSController;
       try {
-        const WS = WebSocket as any;
-        if (headers) {
-          try {
-            socket = new WS(url, { headers }) as WebSocket;
-          } catch {
-            socket = new WS(url, undefined, { headers }) as WebSocket;
-          }
-        } else socket = new WS(url) as WebSocket;
+        socket = this.createWSController(url, headers);
       } catch (error) {
         reject(new NeuroApiError("WS_ERROR", `Failed to create WebSocket: ${error instanceof Error ? error.message : "Unknown error"}`));
         return;
@@ -921,6 +926,14 @@ export class NeuroInfoApiWebsocketClient {
       }
 
       connection.socket = socket;
+      socket.onPing = () => {
+        if (this.connection !== connection || socket.heartbeatMode !== "server-ping") return;
+        const heartbeat = connection.heartbeat;
+        if (heartbeat) this.scheduleHeartbeatTimeout(connection, heartbeat);
+        // The adapter automatically answers protocol pings. Expose the same
+        // heartbeat notification as a received JSON pong on Native.
+        this.emitSystem("_pong");
+      };
 
       let settled = false;
 
@@ -969,6 +982,7 @@ export class NeuroInfoApiWebsocketClient {
       };
 
       const cleanup = () => {
+        socket.onPing = null;
         socket.removeEventListener("message", onMessage);
         socket.removeEventListener("error", onError);
         socket.removeEventListener("close", onClose);
@@ -1063,7 +1077,7 @@ export class NeuroInfoApiWebsocketClient {
     subscription.listeners.forEach((entry) => invokeSafely(entry.callback, msg.data.eventData, msg.data.timestamp));
   }
 
-  private handleClose(connection: WsConnectionState, event: CloseEvent): void {
+  private handleClose(connection: WsConnectionState, event: Pick<CloseEvent, "code" | "reason">): void {
     if (this.connection !== connection) return;
     this.connection = null;
     connection.connect = null;
@@ -1112,18 +1126,25 @@ export class NeuroInfoApiWebsocketClient {
 
   private startHeartbeat(connection: WsConnectionState): void {
     this.stopHeartbeat(connection);
-    if (!this.autoHeartbeat || this.connection !== connection) return;
+    if (!this.heartbeatMonitoring || this.connection !== connection) return;
 
     const heartbeat: WsHeartbeatState = { interval: null, timeout: null };
     connection.heartbeat = heartbeat;
-    this.sendHeartbeatPing(connection, heartbeat);
-    this.scheduleHeartbeatInterval(connection, heartbeat);
+    if (connection.socket?.heartbeatMode === "server-ping") this.scheduleHeartbeatTimeout(connection, heartbeat);
+    else {
+      this.sendHeartbeatPing(connection, heartbeat);
+      this.scheduleHeartbeatInterval(connection, heartbeat);
+    }
   }
 
   private scheduleHeartbeatInterval(connection: WsConnectionState, heartbeat: WsHeartbeatState): void {
     heartbeat.interval = clearIntervalHandle(heartbeat.interval);
-    if (this.connection !== connection || connection.heartbeat !== heartbeat || !this.autoHeartbeat) return;
+    if (this.connection !== connection || connection.heartbeat !== heartbeat || !this.heartbeatMonitoring) return;
 
+    if (connection.socket?.heartbeatMode === "server-ping") {
+      this.scheduleHeartbeatTimeout(connection, heartbeat);
+      return;
+    }
     heartbeat.interval = setInterval(() => this.sendHeartbeatPing(connection, heartbeat), this.heartbeatIntervalMs);
   }
 
@@ -1155,14 +1176,18 @@ export class NeuroInfoApiWebsocketClient {
       heartbeat.timeout = null;
       if (this.connection !== connection || connection.heartbeat !== heartbeat || socket.readyState !== WebSocketState.Open) return;
 
-      this.emitSystem("_error", new NeuroApiError("WS_HEARTBEAT_TIMEOUT", "Heartbeat pong timeout"));
-      socket.close(4002, "Heartbeat timeout");
-    }, this.heartbeatTimeoutMs);
+      this.emitSystem("_error", new NeuroApiError("WS_HEARTBEAT_TIMEOUT",
+        socket.heartbeatMode === "server-ping" ? "Heartbeat server ping timeout" : "Heartbeat pong timeout"));
+      if (this.connection !== connection || this.lifecycle.intentionallyClosed) return;
+      // Reconnect must not depend on the old socket completing its close handshake.
+      this.handleClose(connection, { code: 4002, reason: "Heartbeat timeout" });
+      socket.terminate(4002, "Heartbeat timeout");
+    }, socket.heartbeatMode === "server-ping" ? this.heartbeatIntervalMs + this.heartbeatTimeoutMs : this.heartbeatTimeoutMs);
   }
 
   private acknowledgeHeartbeat(connection: WsConnectionState): void {
     const heartbeat = connection.heartbeat;
-    if (this.connection !== connection || heartbeat?.timeout == null) return;
+    if (this.connection !== connection || heartbeat?.timeout == null || connection.socket?.heartbeatMode === "server-ping") return;
 
     heartbeat.timeout = clearTimeoutHandle(heartbeat.timeout);
   }
@@ -1352,15 +1377,27 @@ export interface NeuroInfoApiBaseOptions {
 
 /** Options for the NeuroInfoApiWebsocketClient. */
 export interface NeuroInfoApiWebsocketClientOptions extends NeuroInfoApiBaseOptions, Partial<WsClientSettings> {
+  /** Native only: JSON ping interval in milliseconds (default 30000, minimum 5000). Ignored by Node/Bun, which use a fixed 90-second server-ping timeout. */
+  heartbeatIntervalMs?: number;
+  /** Native only: JSON pong timeout in milliseconds (default 10000, minimum 1000). Ignored by Node/Bun, which use a fixed 90-second server-ping timeout. */
+  heartbeatTimeoutMs?: number;
+  /**
+   * Monitor heartbeat timeouts; also send JSON pings in Native. Default true.
+   * Does not disable protocol pong replies or incoming _pong notifications.
+   * Takes precedence over the deprecated autoHeartbeat option.
+   */
+  heartbeatMonitoring?: boolean;
+  /** @deprecated Use heartbeatMonitoring instead. */
+  autoHeartbeat?: boolean;
   /** Full WebSocket URL override. By default it is derived from `apiBaseUrl` and `useTls`. */
   websocketUrl?: string;
   /** @deprecated Use `websocketUrl`, or `apiBaseUrl` with `useTls`, instead. */
   baseUrl?: string;
   /**
    * Authentication method to use when connecting.
-   * - `"ticket"` *(default)*: Fetches a one-time ticket via REST API before connecting.
+   * - `"ticket"` *(default in the native package)*: Fetches a one-time ticket via REST API before connecting.
    *   The token is never exposed in URL query parameters. Recommended for browser clients.
-   * - `"header"`: Sends the token via `Authorization: Bearer` header during the WebSocket handshake.
+   * - `"header"` *(default in the Node and Bun packages)*: Sends the token via `Authorization: Bearer` header during the WebSocket handshake.
    *   Only works in environments that support custom WebSocket headers (e.g., Node.js with the `ws` library).
    *   **Not supported in browsers.**
   */
@@ -1385,6 +1422,7 @@ export interface WsSystemEventCallbacks {
   _reconnectFailed: () => void;
   _error: (error: Event | NeuroApiError) => void;
   _message: (message: WsServerMessage) => void;
+  /** Heartbeat observed: JSON pong received, or server protocol ping automatically answered (Node/Bun). */
   _pong: () => void;
   _eventAdded: (eventType: WsEventType) => void;
   _eventRemoved: (eventType: WsEventType) => void;
@@ -1581,11 +1619,11 @@ type WsListenerState = { events: Map<WsEventType, WsEventSubscription<any>>; sys
 type ClientUrls = { api: string; websocket: string };
 type WsAuthState = { token: string; method: "ticket" | "header" };
 type WsLifecycleState = { intentionallyClosed: boolean; destroyGeneration: number };
-type WsClientSettings = { autoReconnect: boolean; autoHeartbeat: boolean; maxReconnectAttempts: number; reconnectBaseDelay: number; heartbeatIntervalMs: number; heartbeatTimeoutMs: number; connectTimeoutMs: number };
+type WsClientSettings = { autoReconnect: boolean; heartbeatMonitoring: boolean; maxReconnectAttempts: number; reconnectBaseDelay: number; heartbeatIntervalMs: number; heartbeatTimeoutMs: number; connectTimeoutMs: number };
 type WsHeartbeatState = { interval: IntervalHandle | null; timeout: TimeoutHandle | null };
 
 type WsConnectState = { promise: Promise<void> | null; abortController: AbortController; timeout: TimeoutHandle | null; abortError: NeuroApiError; onAbort: () => void };
-type WsConnectionState = { socket: WebSocket | null; sessionId: string | null; connect: WsConnectState | null; heartbeat: WsHeartbeatState | null; isAutomaticReconnect: boolean };
+type WsConnectionState = { socket: WSController | null; sessionId: string | null; connect: WsConnectState | null; heartbeat: WsHeartbeatState | null; isAutomaticReconnect: boolean };
 
 type WsReconnectState = { attempts: number; timeout: TimeoutHandle | null };
 

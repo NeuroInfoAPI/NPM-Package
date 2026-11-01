@@ -1,0 +1,56 @@
+{
+  "name": "@neuroinfoapi-client/node",
+  "version": "2.6.0",
+  "description": "A client for interacting with the NeuroInfoAPI (Node.js edition)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/*.js",
+    "dist/*.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "publishPackage": "powershell -NoProfile -ExecutionPolicy Bypass -File ../../scripts/publishAsk.ps1 -Package node",
+    "deprecatePackage": "powershell -NoProfile -ExecutionPolicy Bypass -File ../../scripts/deprecateAsk.ps1 -Package node"
+  },
+  "keywords": [
+    "node",
+    "neuroinfoapi",
+    "nia",
+    "vedal987",
+    "neurosama",
+    "neuro-sama"
+  ],
+  "author": "Appstun",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/NeuroInfoAPI/NPM-Package/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NeuroInfoAPI/NPM-Package.git",
+    "directory": "packages/node"
+  },
+  "homepage": "https://neuro.appstun.net/api/docs",
+  "dependencies": {
+    "@neuroinfoapi-client/core": "2.6.0",
+    "ws": "^8.22.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/ws": "^8.18.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

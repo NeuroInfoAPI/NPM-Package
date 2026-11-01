@@ -1,6 +1,12 @@
 {
-  "include": ["src/**/*.ts"],
-  "exclude": ["dist", "tests"],
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/native" },
+    { "path": "./packages/node" },
+    { "path": "./packages/bun" }
+  ],
+  "exclude": ["**/dist", "**/node_modules", "tests"],
   "compilerOptions": {
     "target": "ES2020",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
@@ -15,7 +21,6 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist",
-    "rootDir": "./src"
+    "noEmitOnError": true
   }
 }
