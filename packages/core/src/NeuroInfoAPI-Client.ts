@@ -3,11 +3,21 @@ import type { WSController } from "./WSController.js";
 export type ApiResult<T> = { data: T; error: null } | { data: null; error: NeuroApiError };
 type TimeoutHandle = ReturnType<typeof setTimeout>;
 type IntervalHandle = ReturnType<typeof setInterval>;
-const enum WebSocketState { Connecting, Open, Closing, Closed }
-const enum SubscriptionState { Unsubscribed = "unsubscribed", Subscribing = "subscribing", Subscribed = "subscribed", Unsubscribing = "unsubscribing" }
+const enum WebSocketState {
+  Connecting,
+  Open,
+  Closing,
+  Closed,
+}
+const enum SubscriptionState {
+  Unsubscribed = "unsubscribed",
+  Subscribing = "subscribing",
+  Subscribed = "subscribed",
+  Unsubscribing = "unsubscribing",
+}
 
 const apiVersion = "v2";
-const defaultApiBaseUrl = `neuro.appstun.net/api/${apiVersion}`;
+const defaultApiBaseUrl = `neuroinfoapi.dev/api/${apiVersion}`;
 
 function invokeSafely(callback: (...args: any[]) => unknown, ...args: any[]): void {
   try {
@@ -233,7 +243,11 @@ export class NeuroInfoApiClient {
   constructor(token: string | undefined = undefined, options: NeuroInfoApiClientOptions = {}) {
     const apiUrl =
       options.apiBaseUrl != null ? createClientUrls(options.apiBaseUrl, options.useTls).api : (options.baseUrl ?? createClientUrls().api);
-    this.apiInstance = new HttpClient({ baseURL: apiUrl, timeout: options.requestTimeoutMs, headers: { "Content-Type": "application/json" } });
+    this.apiInstance = new HttpClient({
+      baseURL: apiUrl,
+      timeout: options.requestTimeoutMs,
+      headers: { "Content-Type": "application/json" },
+    });
 
     if (token != null) this.setApiToken(token);
 
@@ -633,7 +647,15 @@ export abstract class NeuroInfoApiWebsocketClient {
   private readonly listeners: WsListenerState = { events: new Map(), system: new Map() };
   private readonly reconnect: WsReconnectState = { attempts: 0, timeout: null };
   private readonly lifecycle: WsLifecycleState = { intentionallyClosed: false, destroyGeneration: 0 };
-  private readonly settings: WsClientSettings = { autoReconnect: true, heartbeatMonitoring: true, maxReconnectAttempts: 10, reconnectBaseDelay: 1000, heartbeatIntervalMs: 30000, heartbeatTimeoutMs: 10000, connectTimeoutMs: 15000 };
+  private readonly settings: WsClientSettings = {
+    autoReconnect: true,
+    heartbeatMonitoring: true,
+    maxReconnectAttempts: 10,
+    reconnectBaseDelay: 1000,
+    heartbeatIntervalMs: 30000,
+    heartbeatTimeoutMs: 10000,
+    connectTimeoutMs: 15000,
+  };
 
   /** Whether to automatically reconnect on disconnect. Default is true. */
   public get autoReconnect(): boolean {
@@ -809,7 +831,13 @@ export abstract class NeuroInfoApiWebsocketClient {
     }
     this.lifecycle.intentionallyClosed = false;
     this.clearReconnectTimeout();
-    const connect: WsConnectState = { promise: null, abortController: new AbortController(), timeout: null, abortError: new NeuroApiError("WS_CONNECT_CANCELLED", "WebSocket connection was cancelled"), onAbort: () => {} };
+    const connect: WsConnectState = {
+      promise: null,
+      abortController: new AbortController(),
+      timeout: null,
+      abortError: new NeuroApiError("WS_CONNECT_CANCELLED", "WebSocket connection was cancelled"),
+      onAbort: () => {},
+    };
     const connection: WsConnectionState = { socket: null, sessionId: null, connect, heartbeat: null, isAutomaticReconnect };
     this.connection = connection;
 
@@ -1172,17 +1200,25 @@ export abstract class NeuroInfoApiWebsocketClient {
     const socket = connection.socket;
     if (this.connection !== connection || connection.heartbeat !== heartbeat || socket?.readyState !== WebSocketState.Open) return;
 
-    heartbeat.timeout = setTimeout(() => {
-      heartbeat.timeout = null;
-      if (this.connection !== connection || connection.heartbeat !== heartbeat || socket.readyState !== WebSocketState.Open) return;
+    heartbeat.timeout = setTimeout(
+      () => {
+        heartbeat.timeout = null;
+        if (this.connection !== connection || connection.heartbeat !== heartbeat || socket.readyState !== WebSocketState.Open) return;
 
-      this.emitSystem("_error", new NeuroApiError("WS_HEARTBEAT_TIMEOUT",
-        socket.heartbeatMode === "server-ping" ? "Heartbeat server ping timeout" : "Heartbeat pong timeout"));
-      if (this.connection !== connection || this.lifecycle.intentionallyClosed) return;
-      // Reconnect must not depend on the old socket completing its close handshake.
-      this.handleClose(connection, { code: 4002, reason: "Heartbeat timeout" });
-      socket.terminate(4002, "Heartbeat timeout");
-    }, socket.heartbeatMode === "server-ping" ? this.heartbeatIntervalMs + this.heartbeatTimeoutMs : this.heartbeatTimeoutMs);
+        this.emitSystem(
+          "_error",
+          new NeuroApiError(
+            "WS_HEARTBEAT_TIMEOUT",
+            socket.heartbeatMode === "server-ping" ? "Heartbeat server ping timeout" : "Heartbeat pong timeout",
+          ),
+        );
+        if (this.connection !== connection || this.lifecycle.intentionallyClosed) return;
+        // Reconnect must not depend on the old socket completing its close handshake.
+        this.handleClose(connection, { code: 4002, reason: "Heartbeat timeout" });
+        socket.terminate(4002, "Heartbeat timeout");
+      },
+      socket.heartbeatMode === "server-ping" ? this.heartbeatIntervalMs + this.heartbeatTimeoutMs : this.heartbeatTimeoutMs,
+    );
   }
 
   private acknowledgeHeartbeat(connection: WsConnectionState): void {
@@ -1369,7 +1405,7 @@ export namespace Utils {
 }
 
 export interface NeuroInfoApiBaseOptions {
-  /** Host and API path without protocol. HTTP(S)/WS(S) protocols are accepted temporarily for compatibility and will be removed in a future major version. Default: `neuro.appstun.net/api/v2`. */
+  /** Host and API path without protocol. HTTP(S)/WS(S) protocols are accepted temporarily for compatibility and will be removed in a future major version. Default: `neuroinfoapi.dev/api/v2`. */
   apiBaseUrl?: string;
   /** Use HTTPS/WSS instead of HTTP/WS. Default: `true`. */
   useTls?: boolean;
@@ -1400,7 +1436,7 @@ export interface NeuroInfoApiWebsocketClientOptions extends NeuroInfoApiBaseOpti
    * - `"header"` *(default in the Node and Bun packages)*: Sends the token via `Authorization: Bearer` header during the WebSocket handshake.
    *   Only works in environments that support custom WebSocket headers (e.g., Node.js with the `ws` library).
    *   **Not supported in browsers.**
-  */
+   */
   authMethod?: "ticket" | "header";
 }
 
@@ -1619,11 +1655,31 @@ type WsListenerState = { events: Map<WsEventType, WsEventSubscription<any>>; sys
 type ClientUrls = { api: string; websocket: string };
 type WsAuthState = { token: string; method: "ticket" | "header" };
 type WsLifecycleState = { intentionallyClosed: boolean; destroyGeneration: number };
-type WsClientSettings = { autoReconnect: boolean; heartbeatMonitoring: boolean; maxReconnectAttempts: number; reconnectBaseDelay: number; heartbeatIntervalMs: number; heartbeatTimeoutMs: number; connectTimeoutMs: number };
+type WsClientSettings = {
+  autoReconnect: boolean;
+  heartbeatMonitoring: boolean;
+  maxReconnectAttempts: number;
+  reconnectBaseDelay: number;
+  heartbeatIntervalMs: number;
+  heartbeatTimeoutMs: number;
+  connectTimeoutMs: number;
+};
 type WsHeartbeatState = { interval: IntervalHandle | null; timeout: TimeoutHandle | null };
 
-type WsConnectState = { promise: Promise<void> | null; abortController: AbortController; timeout: TimeoutHandle | null; abortError: NeuroApiError; onAbort: () => void };
-type WsConnectionState = { socket: WSController | null; sessionId: string | null; connect: WsConnectState | null; heartbeat: WsHeartbeatState | null; isAutomaticReconnect: boolean };
+type WsConnectState = {
+  promise: Promise<void> | null;
+  abortController: AbortController;
+  timeout: TimeoutHandle | null;
+  abortError: NeuroApiError;
+  onAbort: () => void;
+};
+type WsConnectionState = {
+  socket: WSController | null;
+  sessionId: string | null;
+  connect: WsConnectState | null;
+  heartbeat: WsHeartbeatState | null;
+  isAutomaticReconnect: boolean;
+};
 
 type WsReconnectState = { attempts: number; timeout: TimeoutHandle | null };
 
@@ -1747,7 +1803,11 @@ export type ApiClientEventCallback<T extends ApiClientEvent> = (data: ApiClientE
 type EventListenerEntry<T extends ApiClientEvent> = { callback: ApiClientEventCallback<T>; onError?: (error: NeuroApiError) => void };
 
 /** @deprecated Internal state used only by the deprecated `NeuroInfoApiEventer`. */
-type EventerState = { listeners: Map<ApiClientEvent, Set<EventListenerEntry<any>>>; cache: Partial<{ streamData: TwitchStreamState; latestSchedule: LatestScheduleData; currentSubathons: SubathonData[] }>; loop: { timer: IntervalHandle | null; processing: boolean; intervalMs: number } };
+type EventerState = {
+  listeners: Map<ApiClientEvent, Set<EventListenerEntry<any>>>;
+  cache: Partial<{ streamData: TwitchStreamState; latestSchedule: LatestScheduleData; currentSubathons: SubathonData[] }>;
+  loop: { timer: IntervalHandle | null; processing: boolean; intervalMs: number };
+};
 
 /** @deprecated Use `Utils.isScheduleFinal` instead. */
 export const isScheduleFinal = Utils.isScheduleFinal;

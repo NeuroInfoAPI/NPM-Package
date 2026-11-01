@@ -54,11 +54,11 @@ new NeuroInfoApiClient(token?: string, options?: NeuroInfoApiClientOptions)
 
 `NeuroInfoApiClientOptions` supports:
 
-| Option             | Default                    | Description                              |
-| ------------------ | -------------------------- | ---------------------------------------- |
-| `apiBaseUrl`       | `neuro.appstun.net/api/v2` | API host and path without a protocol     |
-| `useTls`           | `true`                     | Use HTTPS when `true`, HTTP when `false` |
-| `requestTimeoutMs` | `10000`                    | HTTP request timeout in milliseconds     |
+| Option             | Default                   | Description                              |
+| ------------------ | ------------------------- | ---------------------------------------- |
+| `apiBaseUrl`       | `neuroinfoapi.dev/api/v2` | API host and path without a protocol     |
+| `useTls`           | `true`                    | Use HTTPS when `true`, HTTP when `false` |
+| `requestTimeoutMs` | `10000`                   | HTTP request timeout in milliseconds     |
 
 The legacy `baseUrl` option is deprecated and will be removed in a future major version.
 
@@ -283,7 +283,7 @@ try {
 
 ## Documentation
 
-- [API documentation](https://neuro.appstun.net/api/docs)
+- [API documentation](https://neuroinfoapi.dev/api/docs)
 
 ## License
 

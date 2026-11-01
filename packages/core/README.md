@@ -12,7 +12,7 @@ Core has no WebSocket runtime dependency.
 ## Documentation
 
 - [Clients Repositories](https://github.com/NeuroInfoAPI/NPM-Package/tree/master/packages)
-- [API documentation](https://neuro.appstun.net/api/docs)
+- [API documentation](https://neuroinfoapi.dev/api/docs)
 
 ## License
 

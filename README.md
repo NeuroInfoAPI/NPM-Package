@@ -44,7 +44,7 @@ For the examples see the respective package READMEs.
 
 ## Documentation
 
-- API docs: https://neuro.appstun.net/api/docs
+- API docs: https://neuroinfoapi.dev/api/docs
 
 ## Development
 

@@ -41,7 +41,7 @@
     "url": "https://github.com/NeuroInfoAPI/NPM-Package.git",
     "directory": "packages/bun"
   },
-  "homepage": "https://neuro.appstun.net/api/docs",
+  "homepage": "https://neuroinfoapi.dev/api/docs",
   "dependencies": {
     "@neuroinfoapi-client/core": "2.6.0"
   },
